@@ -32,7 +32,7 @@ Set your OpenAI API key:
 export OPENAI_API_KEY=your-api-key
 ```
 
-Or if you've already got that configured and you want to specify a different key for Honyaku, you can set this and we'll use it instead:
+Or if you've already got that configured for another purpose and you want to specify a different key for Honyaku, you can set this and we'll use it instead:
 ```bash
 export HONYAKU_OPENAI_API_KEY=your-api-key
 ```
