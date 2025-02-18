@@ -36,6 +36,13 @@ module Honyaku
       path = options[:path] || "config/locales"
       model = options[:model] || "gpt-4"
 
+      # Check if the source path exists
+      unless File.exist?(path)
+        puts "❌ Source path not found: #{path}"
+        puts "   Please check that the file or directory exists"
+        exit 1
+      end
+
       # Find all .honyakurules files from root to current path
       rules = find_translation_rules(path, locale)
       if rules.any?
@@ -54,7 +61,13 @@ module Honyaku
       if File.file?(path)
         process_file(path, translator, source_locale, locale)
       else
-        Dir.glob("#{path}/**/*.yml").each do |file|
+        files = Dir.glob("#{path}/**/*.yml")
+        if files.empty?
+          puts "❌ No YAML files found in: #{path}"
+          puts "   Make sure your path contains .yml files"
+          exit 1
+        end
+        files.each do |file|
           process_file(file, translator, source_locale, locale)
         end
       end
