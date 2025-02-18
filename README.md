@@ -1,6 +1,6 @@
 # Honyaku (翻訳)
 
-A Ruby gem for translating Rails application locale files using OpenAI's GPT models. Honyaku maintains YAML structure and interpolation variables while providing accurate translations.
+A Ruby gem for quickly, reliably, and accurately translating your Rails application using OpenAI's GPT models.
 
 Honyaku was built using [Cursor Composer](https://docs.cursor.com/composer) with [claude-3.5-sonnet](https://www.anthropic.com/news/claude-35-sonnet), prompted by [Andrew Culver](https://github.com/andrewculver) at [ClickFunnels](https://www.clickfunnels.com).
 
