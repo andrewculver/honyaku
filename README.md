@@ -10,8 +10,35 @@ Honyaku was built using [Cursor Composer](https://docs.cursor.com/composer) with
 - Preserves YAML structure, references, and interpolation variables
 - Supports translation rules via `.honyakurules` files
 - Handles large files through automatic chunking
-- Automatically fixes common YAML formatting issues
+- Automatically fixes YAML formatting issues caused by the GPT
 - Supports backup creation before modifications
+
+# Example Output
+
+```
+andrewculver@Andrews-MacBook-Pro-2 admin % honyaku translate ja --path config/locales/en/affiliates             
+📋 Found 2 translation rule file(s):
+   📝 /Users/andrewculver/Sites/admin/.honyakurules
+   🌐 /Users/andrewculver/Sites/admin/.honyakurules.ja
+🌏 Translating from en to ja...
+📂 Processing files in config/locales/en/affiliates...
+📝 Processing config/locales/en/affiliates/active_referrals_report.en.yml...
+✨ Created config/locales/ja/affiliates/active_referrals_report.ja.yml
+🔧 Checking for YAML issues...
+✅ No more YAML errors found
+📝 Processing config/locales/en/affiliates/add_tag_actions.en.yml...
+✨ Created config/locales/ja/affiliates/add_tag_actions.ja.yml
+🔧 Checking for YAML issues...
+🔧 Found YAML error on line 5: (<unknown>): found character that cannot start any token while scanning for the next token at line 5 column 13
+   zero: %{count}アフィリエイトにコミッションプランアクションを追加する
+🔧 Found YAML error on line 6: (<unknown>): found character that cannot start any token while scanning for the next token at line 6 column 12
+   one: %{count}アフィリエイトにコミッションプランアクションを追加する
+🔧 Found YAML error on line 7: (<unknown>): found character that cannot start any token while scanning for the next token at line 7 column 14
+   other: %{count}アフィリエイトにコミッションプランアクションを追加する
+✅ No more YAML errors found
+✨ Fixed YAML formatting issues
+...
+```
 
 ## Installation
 
