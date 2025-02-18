@@ -1,6 +1,6 @@
 # Honyaku (翻訳)
 
-A Ruby gem for quickly, reliably, and accurately translating your Rails application using OpenAI.
+A Ruby gem for quickly, reliably, and accurately translating your Rails application using OpenAI. Created because it replaced a $34K/year SaaS contract and streamlined our deploy process.
 
 Honyaku was built using [Cursor Composer](https://docs.cursor.com/composer) with [claude-3.5-sonnet](https://www.anthropic.com/news/claude-35-sonnet), prompted by [Andrew Culver](https://x.com/andrewculver) at [ClickFunnels](https://www.clickfunnels.com).
 
