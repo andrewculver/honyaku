@@ -5,7 +5,7 @@ module Honyaku
   class Translator
     LINES_PER_CHUNK = 250
 
-    def initialize(api_key: nil, model: "gpt-3.5-turbo", translation_rules: [])
+    def initialize(api_key: nil, model: "gpt-4", translation_rules: [])
       api_key ||= ENV["HONYAKU_OPENAI_API_KEY"] || ENV["OPENAI_API_KEY"]
       @client = OpenAI::Client.new(access_token: api_key)
       @model = model
@@ -17,19 +17,20 @@ module Honyaku
       lines = yaml_content.lines
       
       # If the file is small enough, translate it all at once
-      return translate_chunk(yaml_content, from_locale, to_locale) if lines.size <= LINES_PER_CHUNK
-      
-      # Otherwise, split into chunks and translate each
-      chunks = split_into_chunks(lines)
-      puts "📦 Splitting file into #{chunks.size} chunks..."
-      
-      translated_chunks = chunks.map.with_index do |chunk, i|
-        puts "🔄 Translating chunk #{i + 1} of #{chunks.size}..."
-        translate_chunk(chunk, from_locale, to_locale)
+      if lines.size <= LINES_PER_CHUNK
+        translate_chunk(yaml_content, from_locale, to_locale)
+      else
+        # Otherwise, split into chunks and translate each
+        chunks = split_into_chunks(lines)
+        puts "📦 Splitting file into #{chunks.size} chunks..."
+        
+        translated_chunks = chunks.map.with_index do |chunk, i|
+          puts "🔄 Translating chunk #{i + 1} of #{chunks.size}..."
+          translate_chunk(chunk, from_locale, to_locale)
+        end
+        
+        translated_chunks.join("\n")
       end
-      
-      # Join chunks with newlines to preserve formatting
-      translated_chunks.join("\n")
     end
 
     def fix_yaml(file_path)
@@ -177,14 +178,38 @@ module Honyaku
     end
 
     def build_system_prompt
-      base_prompt = "You are a professional translator. You will be translating YAML files. Preserve all indentation, structure, keys, and interpolation variables (like %{name}) exactly as they appear. Only translate the text values."
-      
+      base_prompt = <<~PROMPT
+        You are a professional translator. You will be translating YAML files.
+        
+        CRITICAL REQUIREMENTS:
+        1. Only translate text values after the colon (:)
+        2. Never modify, translate, or remove:
+           - YAML keys (text before the colon)
+           - Interpolation variables (like %{name})
+           - YAML references and anchors
+           - Comments
+           - Empty lines
+        3. Keep all special characters exactly as they appear
+        4. Maintain the exact same line count
+        5. Never add or remove lines
+        6. Never change the structure of the file
+      PROMPT
+
       if @translation_rules.any?
-        rules = @translation_rules.map { |rule| rule[:content] }.join("\n\n")
-        "#{base_prompt}\n\nAdditional translation rules:\n#{rules}"
-      else
-        base_prompt
+        general_rules, locale_rules = @translation_rules.partition { |r| !r[:locale_specific] }
+        
+        if general_rules.any?
+          base_prompt += "\n\nGeneral translation rules:\n" + 
+                        general_rules.map { |rule| rule[:content] }.join("\n\n")
+        end
+        
+        if locale_rules.any?
+          base_prompt += "\n\nTarget language specific rules:\n" + 
+                        locale_rules.map { |rule| rule[:content] }.join("\n\n")
+        end
       end
+
+      base_prompt
     end
   end
 end 

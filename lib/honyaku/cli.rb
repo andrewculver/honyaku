@@ -20,7 +20,9 @@ module Honyaku
     LONGDESC
     method_option :from, aliases: "-f", desc: "Source locale (defaults to en)"
     method_option :path, aliases: "-p", desc: "Path to YAML file or directory (defaults to config/locales)"
-    method_option :model, aliases: "-m", desc: "Specify which AI model to use (defaults to gpt-3.5-turbo)"
+    method_option :model, 
+                 aliases: "-m", 
+                 desc: "Specify which AI model to use (defaults to gpt-4, use gpt-3.5-turbo for faster but less accurate translations)"
     method_option :backup, aliases: "-b", type: :boolean, desc: "Create .bak files before modifying"
     def translate(locale)
       api_key = ENV["HONYAKU_OPENAI_API_KEY"] || ENV["OPENAI_API_KEY"]
@@ -31,13 +33,16 @@ module Honyaku
 
       source_locale = options[:from] || "en"
       path = options[:path] || "config/locales"
-      model = options[:model] || "gpt-3.5-turbo"
+      model = options[:model] || "gpt-4"
 
       # Find all .honyakurules files from root to current path
-      rules = find_translation_rules(path)
+      rules = find_translation_rules(path, locale)
       if rules.any?
         puts "📋 Found #{rules.length} translation rule file(s):"
-        rules.each { |rule| puts "   #{rule[:path]}" }
+        rules.each do |rule|
+          prefix = rule[:locale_specific] ? "🌐" : "📝"
+          puts "   #{prefix} #{rule[:path]}"
+        end
       end
 
       puts "🌏 Translating from #{source_locale} to #{locale}..."
@@ -100,7 +105,7 @@ module Honyaku
 
     private
 
-    def find_translation_rules(start_path)
+    def find_translation_rules(start_path, target_locale = nil)
       rules = []
       
       # Start from the directory containing the YAML file/directory
@@ -114,10 +119,19 @@ module Honyaku
         }
       end
       
+      # Check for locale-specific rules in current directory
+      if target_locale && File.exist?(".honyakurules.#{target_locale}")
+        rules << {
+          path: File.expand_path(".honyakurules.#{target_locale}"),
+          content: File.read(".honyakurules.#{target_locale}").strip,
+          locale_specific: true
+        }
+      end
+      
       # Walk up the directory tree from the YAML path
       while current_path != '/' && current_path != Dir.pwd
+        # Check for general rules
         rules_file = File.join(current_path, '.honyakurules')
-        
         if File.exist?(rules_file)
           rules << {
             path: rules_file,
@@ -125,10 +139,23 @@ module Honyaku
           }
         end
         
+        # Check for locale-specific rules
+        if target_locale
+          locale_rules_file = File.join(current_path, ".honyakurules.#{target_locale}")
+          if File.exist?(locale_rules_file)
+            rules << {
+              path: locale_rules_file,
+              content: File.read(locale_rules_file).strip,
+              locale_specific: true
+            }
+          end
+        end
+        
         current_path = File.dirname(current_path)
       end
       
-      rules.reverse # Reverse to maintain root-to-local order
+      # Reverse to maintain root-to-local order, but ensure locale-specific rules come after general rules
+      rules.reverse.partition { |r| !r[:locale_specific] }.flatten
     end
 
     def process_file(file_path, translator, source_locale, target_locale)
