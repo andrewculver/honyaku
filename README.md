@@ -29,9 +29,12 @@ gem install honyaku
 
 Set your OpenAI API key:
 ```bash
-export HONYAKU_OPENAI_API_KEY=your-api-key
-# or
 export OPENAI_API_KEY=your-api-key
+```
+
+Or if you've already got that configured and you want to specify a different key for Honyaku, you can set this and we'll use it instead:
+```bash
+export HONYAKU_OPENAI_API_KEY=your-api-key
 ```
 
 ## Usage
