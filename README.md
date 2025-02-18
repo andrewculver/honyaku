@@ -41,6 +41,7 @@ $ honyaku translate ja --path config/locales/en/affiliates
    other: %{count}アフィリエイトにコミッションプランアクションを追加する
 ✅ No more YAML errors found
 ✨ Fixed YAML formatting issues
+⏭️  Skipping config/locales/en/affiliates/applied_tags.en.yml - translation is up to date
 ...
 ```
 
