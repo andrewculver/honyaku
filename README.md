@@ -1,4 +1,4 @@
-# Honyaku (翻訳)
+# Honyaku 翻訳
 
 A Ruby gem for quickly, reliably, and accurately translating your Rails application using OpenAI. Created because it replaced a $34K/year SaaS contract and streamlined our deploy process.
 
