@@ -12,6 +12,7 @@ Honyaku was built using [Cursor Composer](https://docs.cursor.com/composer) with
 - Handles large files through automatic chunking
 - Automatically fixes YAML formatting issues caused by the GPT
 - Supports backup creation before modifications
+- Smart file skipping to avoid unnecessary retranslation
 
 # Example Output
 
@@ -86,7 +87,21 @@ honyaku translate ja --backup --path config/locales/en.yml
 
 # Use GPT-3.5-turbo for faster processing
 honyaku translate fr --model gpt-3.5-turbo --path config/locales/en.yml
+
+# Force retranslation of files even if they're up to date
+honyaku translate ja --force --path config/locales/en.yml
 ```
+
+### Smart File Skipping
+
+Honyaku tracks file modification times to avoid unnecessary retranslation:
+
+- Checks both git history and filesystem timestamps
+- Uses the newer of the two dates for comparison
+- Skips translation if target file is newer than source
+- Shows "⏭️  Skipping" message for up-to-date files
+
+You can override this behavior with `--force` to retranslate all files regardless of their timestamps.
 
 ### Translation Rules
 
