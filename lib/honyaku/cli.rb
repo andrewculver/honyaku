@@ -24,6 +24,7 @@ module Honyaku
                  aliases: "-m", 
                  desc: "Specify which AI model to use (defaults to gpt-4, use gpt-3.5-turbo for faster but less accurate translations)"
     method_option :backup, aliases: "-b", type: :boolean, desc: "Create .bak files before modifying"
+    method_option :force, type: :boolean, desc: "Retranslate files even if target is newer than source"
     def translate(locale)
       api_key = ENV["HONYAKU_OPENAI_API_KEY"] || ENV["OPENAI_API_KEY"]
       unless api_key
@@ -159,7 +160,23 @@ module Honyaku
     end
 
     def process_file(file_path, translator, source_locale, target_locale)
-      return unless file_path.include?(source_locale)
+      # Check if this is a source locale file we should translate
+      source_pattern = /#{source_locale}(\/|\.yml)/
+      return unless file_path =~ source_pattern
+
+      # Generate the target filename
+      target_file = file_path.gsub(source_pattern, "#{target_locale}\\1")
+
+      # Only skip if target exists AND is newer (unless --force is used)
+      if File.exist?(target_file) && !options[:force]
+        source_time = get_last_modified_time(file_path)
+        target_time = get_last_modified_time(target_file)
+
+        if target_time && source_time && target_time > source_time
+          puts "⏭️  Skipping #{file_path} - translation is up to date"
+          return
+        end
+      end
 
       puts "📝 Processing #{file_path}..."
       
@@ -170,9 +187,6 @@ module Honyaku
         loop do
           attempts += 1
           translated_content = translator.translate_hash(file_path, source_locale, target_locale)
-          
-          # Generate the new filename by replacing both directory and file locale markers
-          target_file = file_path.gsub(/#{source_locale}(?=\/|\.yml)/, target_locale)
           
           # Create directory if it doesn't exist
           FileUtils.mkdir_p(File.dirname(target_file))
@@ -232,6 +246,34 @@ module Honyaku
       rescue => e
         puts "❌ Error fixing #{file_path}: #{e.message}"
       end
+    end
+
+    def get_last_modified_time(file_path)
+      times = []
+      
+      # Get git timestamp if available
+      if git_time = get_git_modified_time(file_path)
+        times << git_time
+      end
+      
+      # Get filesystem timestamp
+      if File.exist?(file_path)
+        times << File.mtime(file_path)
+      end
+      
+      # Return the newest timestamp (or nil if no timestamps found)
+      times.max
+    end
+
+    def get_git_modified_time(file_path)
+      return nil unless system("git rev-parse --is-inside-work-tree > /dev/null 2>&1")
+      
+      time_str = `git log -1 --format=%cd --date=iso -- #{file_path} 2>/dev/null`.strip
+      return nil if time_str.empty?
+      
+      Time.parse(time_str)
+    rescue
+      nil
     end
 
     desc "status", "Show translation status for all locales"
