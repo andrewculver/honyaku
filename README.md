@@ -42,6 +42,7 @@ $ honyaku translate ja --path config/locales/en/affiliates
 ✅ No more YAML errors found
 ✨ Fixed YAML formatting issues
 ⏭️  Skipping config/locales/en/affiliates/applied_tags.en.yml - translation is up to date
+⏭️  Skipping config/locales/en/affiliates/approve_actions.en.yml - translation is up to date
 ...
 ```
 
