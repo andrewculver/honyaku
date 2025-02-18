@@ -16,7 +16,7 @@ Honyaku was built using [Cursor Composer](https://docs.cursor.com/composer) with
 # Example Output
 
 ```
-andrewculver@Andrews-MacBook-Pro-2 admin % honyaku translate ja --path config/locales/en/affiliates             
+$ honyaku translate ja --path config/locales/en/affiliates             
 📋 Found 2 translation rule file(s):
    📝 /Users/andrewculver/Sites/admin/.honyakurules
    🌐 /Users/andrewculver/Sites/admin/.honyakurules.ja
