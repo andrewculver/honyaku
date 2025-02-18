@@ -25,8 +25,23 @@ module Honyaku
         puts "📦 Splitting file into #{chunks.size} chunks..."
         
         translated_chunks = chunks.map.with_index do |chunk, i|
-          puts "🔄 Translating chunk #{i + 1} of #{chunks.size}..."
-          translate_chunk(chunk, from_locale, to_locale)
+          max_retries = 3
+          attempts = 0
+          
+          begin
+            attempts += 1
+            puts "🔄 Translating chunk #{i + 1} of #{chunks.size}..."
+            translate_chunk(chunk, from_locale, to_locale)
+          rescue Net::ReadTimeout, Timeout::Error => e
+            if attempts < max_retries
+              puts "⚠️  Network timeout, retrying chunk #{i + 1} (attempt #{attempts}/#{max_retries})..."
+              sleep(attempts) # Exponential backoff
+              retry
+            else
+              puts "⚠️  Error translating chunk #{i + 1} after #{max_retries} attempts: #{e.message}"
+              chunk # Return original content for this chunk
+            end
+          end
         end
         
         translated_chunks.join("\n")
@@ -125,29 +140,44 @@ module Honyaku
     end
 
     def translate_chunk(content, from_locale, to_locale)
-      response = @client.chat(
-        parameters: {
-          model: @model,
-          messages: [
-            {
-              role: "system",
-              content: build_system_prompt
-            },
-            {
-              role: "user",
-              content: "Translate this YAML content from #{from_locale} to #{to_locale}. Keep all structure and special characters exactly the same:\n\n#{content}"
-            }
-          ],
-          temperature: 0.7
-        }
-      )
+      max_retries = 3
+      attempts = 0
+      
+      begin
+        attempts += 1
+        response = @client.chat(
+          parameters: {
+            model: @model,
+            messages: [
+              {
+                role: "system",
+                content: build_system_prompt
+              },
+              {
+                role: "user",
+                content: "Translate this YAML content from #{from_locale} to #{to_locale}. Keep all structure and special characters exactly the same:\n\n#{content}"
+              }
+            ],
+            temperature: 0.7
+          }
+        )
 
-      # Clean up any markdown code block markers
-      response_text = response.dig("choices", 0, "message", "content")
-      response_text.gsub(/^```ya?ml\s*\n/, '').gsub(/\n```\s*$/, '')
-    rescue => e
-      puts "⚠️  Error during translation: #{e.message}"
-      content
+        # Clean up any markdown code block markers
+        response_text = response.dig("choices", 0, "message", "content")
+        response_text.gsub(/^```ya?ml\s*\n/, '').gsub(/\n```\s*$/, '')
+      rescue Net::ReadTimeout, Timeout::Error => e
+        if attempts < max_retries
+          puts "⚠️  Network timeout, retrying (attempt #{attempts}/#{max_retries})..."
+          sleep(attempts) # Exponential backoff
+          retry
+        else
+          puts "⚠️  Error during translation after #{max_retries} attempts: #{e.message}"
+          content
+        end
+      rescue => e
+        puts "⚠️  Error during translation: #{e.message}"
+        content
+      end
     end
 
     def fix_line(line, error)
