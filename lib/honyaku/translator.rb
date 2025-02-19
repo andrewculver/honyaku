@@ -18,34 +18,27 @@ module Honyaku
       
       # If the file is small enough, translate it all at once
       if lines.size <= LINES_PER_CHUNK
-        translate_chunk(yaml_content, from_locale, to_locale)
-      else
-        # Otherwise, split into chunks and translate each
-        chunks = split_into_chunks(lines)
-        puts "📦 Splitting file into #{chunks.size} chunks..."
-        
-        translated_chunks = chunks.map.with_index do |chunk, i|
-          max_retries = 3
-          attempts = 0
-          
-          begin
-            attempts += 1
-            puts "🔄 Translating chunk #{i + 1} of #{chunks.size}..."
-            translate_chunk(chunk, from_locale, to_locale)
-          rescue Net::ReadTimeout, Timeout::Error => e
-            if attempts < max_retries
-              puts "⚠️  Network timeout, retrying chunk #{i + 1} (attempt #{attempts}/#{max_retries})..."
-              sleep(attempts) # Exponential backoff
-              retry
-            else
-              puts "⚠️  Error translating chunk #{i + 1} after #{max_retries} attempts: #{e.message}"
-              chunk # Return original content for this chunk
-            end
-          end
-        end
-        
-        translated_chunks.join("\n")
+        result = translate_chunk(yaml_content, from_locale, to_locale)
+        raise "Translation failed" unless result
+        return result
       end
+      
+      # Otherwise, split into chunks and translate each
+      chunks = split_into_chunks(lines)
+      puts "📦 Splitting file into #{chunks.size} chunks..."
+      
+      translated_chunks = []
+      
+      chunks.each_with_index do |chunk, i|
+        puts "🔄 Translating chunk #{i + 1} of #{chunks.size}..."
+        result = translate_chunk(chunk, from_locale, to_locale)
+        
+        # If any chunk fails, abort the whole translation
+        raise "Translation failed for chunk #{i + 1}" unless result
+        translated_chunks << result
+      end
+      
+      translated_chunks.join("\n")
     end
 
     def fix_yaml(file_path)
@@ -165,18 +158,21 @@ module Honyaku
         # Clean up any markdown code block markers
         response_text = response.dig("choices", 0, "message", "content")
         response_text.gsub(/^```ya?ml\s*\n/, '').gsub(/\n```\s*$/, '')
-      rescue Net::ReadTimeout, Timeout::Error => e
+      rescue => e
+        # Don't retry if it's a billing/credits issue
+        if e.message.include?("insufficient_quota") || e.message.include?("billing")
+          puts "❌ OpenAI API error: #{e.message}"
+          raise e
+        end
+
         if attempts < max_retries
-          puts "⚠️  Network timeout, retrying (attempt #{attempts}/#{max_retries})..."
+          puts "⚠️  OpenAI API error, retrying (attempt #{attempts}/#{max_retries}): #{e.message}"
           sleep(attempts) # Exponential backoff
           retry
         else
-          puts "⚠️  Error during translation after #{max_retries} attempts: #{e.message}"
-          content
+          puts "❌ OpenAI API error after #{max_retries} attempts: #{e.message}"
+          raise e
         end
-      rescue => e
-        puts "⚠️  Error during translation: #{e.message}"
-        content
       end
     end
 

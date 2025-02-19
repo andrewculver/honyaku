@@ -199,20 +199,30 @@ module Honyaku
         
         loop do
           attempts += 1
-          translated_content = translator.translate_hash(file_path, source_locale, target_locale)
+          begin
+            translated_content = translator.translate_hash(file_path, source_locale, target_locale)
+          rescue => e
+            puts "❌ Translation failed: #{e.message}"
+            break
+          end
           
-          # Create directory if it doesn't exist
+          # Don't proceed if translation failed
+          if !translated_content || translated_content.strip.empty?
+            puts "❌ Translation failed - no content generated"
+            break
+          end
+
+          # Create directory and write file only if we have valid content
           FileUtils.mkdir_p(File.dirname(target_file))
           
           # Backup if requested
-          if options[:backup]
+          if options[:backup] && File.exist?(target_file)
             backup_path = "#{target_file}.bak"
-            FileUtils.cp(target_file, backup_path) if File.exist?(target_file)
+            FileUtils.cp(target_file, backup_path)
           end
           
           # Write the translated content
           File.write(target_file, translated_content)
-          
           puts "✨ Created #{target_file}"
           
           # Automatically fix any YAML issues
@@ -231,14 +241,20 @@ module Honyaku
           rescue => e
             if e.message.include?("needs retranslation") && attempts < max_attempts
               puts "⚠️  Translation attempt #{attempts} produced invalid YAML, retrying..."
+              # Clean up the file before retrying
+              File.unlink(target_file) if File.exist?(target_file)
               next
             else
+              # Clean up and re-raise
+              File.unlink(target_file) if File.exist?(target_file)
               raise e
             end
           end
         end
       rescue => e
         puts "❌ Error processing #{file_path}: #{e.message}"
+        # Ensure file is cleaned up if it was created
+        File.unlink(target_file) if File.exist?(target_file)
       end
     end
 
