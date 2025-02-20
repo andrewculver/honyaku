@@ -6,7 +6,6 @@ Honyaku was built using [Cursor Composer](https://docs.cursor.com/composer) with
 
 ## Features
 
-- Uses GPT-4 for high-quality translations (GPT-3.5-turbo optional for faster processing)
 - Preserves YAML structure, references, and interpolation variables
 - Supports translation rules via `.honyakurules` files
 - Handles large files through automatic chunking
@@ -146,11 +145,6 @@ When invalid YAML is detected:
 1. Automatic formatting fixes are attempted
 2. Translation is retried if necessary
 3. Original file is preserved if fixes fail
-
-### Model Selection
-
-- Default: GPT-4 (higher quality, slower)
-- Alternative: GPT-3.5-turbo (faster, less accurate)
 
 ## Development
 
