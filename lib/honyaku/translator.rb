@@ -5,9 +5,12 @@ module Honyaku
   class Translator
     LINES_PER_CHUNK = 250
 
-    def initialize(api_key: nil, model: "gpt-4", translation_rules: [])
+    def initialize(api_key: nil, uri_base: "https://api.openai.com/", model: "gpt-4", translation_rules: [])
       api_key ||= ENV["HONYAKU_OPENAI_API_KEY"] || ENV["OPENAI_API_KEY"]
-      @client = OpenAI::Client.new(access_token: api_key)
+      @client = OpenAI::Client.new(
+        access_token: api_key,
+        uri_base: uri_base
+      )
       @model = model
       @translation_rules = translation_rules
     end
