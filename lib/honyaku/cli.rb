@@ -118,6 +118,11 @@ module Honyaku
       puts "✅ Fixes complete!"
     end
 
+    desc "version", "Show Honyaku version"
+    def version
+      puts "Honyaku v#{Honyaku::VERSION}"
+    end
+
     private
 
     def find_translation_rules(start_path, target_locale = nil)
@@ -310,11 +315,6 @@ module Honyaku
     def status
       puts "📊 Translation Status:"
       # Status reporting logic will go here
-    end
-
-    desc "version", "Show Honyaku version"
-    def version
-      puts "Honyaku v#{Honyaku::VERSION}"
     end
 
     def self.exit_on_failure?
