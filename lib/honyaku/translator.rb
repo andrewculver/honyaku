@@ -47,7 +47,7 @@ module Honyaku
       
       loop do
         begin
-          YAML.load(content)
+          YAML.load(content, aliases: true)
           puts "✅ No more YAML errors found"
           return content
         rescue Psych::SyntaxError => e
