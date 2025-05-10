@@ -21,9 +21,10 @@ module Honyaku
     LONGDESC
     method_option :from, aliases: "-f", desc: "Source locale (defaults to en)"
     method_option :path, aliases: "-p", desc: "Path to YAML file or directory (defaults to config/locales)"
-    method_option :model, 
-                 aliases: "-m", 
+    method_option :model,
+                 aliases: "-m",
                  desc: "Specify which AI model to use (defaults to gpt-4, use gpt-3.5-turbo for faster but less accurate translations)"
+    method_option :uri_base, aliases: "-u", desc: "Override the base URI for API requests (defaults to OpenAI)"
     method_option :backup, aliases: "-b", type: :boolean, desc: "Create .bak files before modifying"
     method_option :force, type: :boolean, desc: "Retranslate files even if target is newer than source"
     def translate(locale)
@@ -36,6 +37,7 @@ module Honyaku
       source_locale = options[:from] || "en"
       path = options[:path] || "config/locales"
       model = options[:model] || "gpt-4"
+      uri_base = options[:uri_base]
 
       # Check if the source path exists
       unless File.exist?(path)
@@ -57,8 +59,8 @@ module Honyaku
       puts "🌏 Translating from #{source_locale} to #{locale}..."
       puts "📂 Processing files in #{path}..."
 
-      translator = Translator.new(model: model, translation_rules: rules)
-      
+      translator = Translator.new(model: model, uri_base: uri_base, translation_rules: rules)
+
       if File.file?(path)
         process_file(path, translator, source_locale, locale)
       else
@@ -101,12 +103,13 @@ module Honyaku
       end
 
       model = options[:model] || "gpt-3.5-turbo"
-      
+      uri_base = options[:uri_base]
+
       puts "🔧 Fixing YAML formatting issues..."
       puts "📂 Processing files in #{path}..."
 
-      fixer = Translator.new(model: model)
-      
+      fixer = Translator.new(model: model, uri_base: uri_base)
+
       if File.file?(path)
         fix_file(path, fixer)
       else
@@ -127,10 +130,10 @@ module Honyaku
 
     def find_translation_rules(start_path, target_locale = nil)
       rules = []
-      
+
       # Start from the directory containing the YAML file/directory
       current_path = File.expand_path(start_path)
-      
+
       # First check the current working directory
       if File.exist?('.honyakurules')
         rules << {
@@ -138,7 +141,7 @@ module Honyaku
           content: File.read('.honyakurules').strip
         }
       end
-      
+
       # Check for locale-specific rules in current directory
       if target_locale && File.exist?(".honyakurules.#{target_locale}")
         rules << {
@@ -147,7 +150,7 @@ module Honyaku
           locale_specific: true
         }
       end
-      
+
       # Walk up the directory tree from the YAML path
       while current_path != '/' && current_path != Dir.pwd
         # Check for general rules
@@ -158,7 +161,7 @@ module Honyaku
             content: File.read(rules_file).strip
           }
         end
-        
+
         # Check for locale-specific rules
         if target_locale
           locale_rules_file = File.join(current_path, ".honyakurules.#{target_locale}")
@@ -170,10 +173,10 @@ module Honyaku
             }
           end
         end
-        
+
         current_path = File.dirname(current_path)
       end
-      
+
       # Reverse to maintain root-to-local order, but ensure locale-specific rules come after general rules
       rules.reverse.partition { |r| !r[:locale_specific] }.flatten
     end
@@ -198,11 +201,11 @@ module Honyaku
       end
 
       puts "📝 Processing #{file_path}..."
-      
+
       begin
         attempts = 0
         max_attempts = 3
-        
+
         loop do
           attempts += 1
           begin
@@ -211,7 +214,7 @@ module Honyaku
             puts "❌ Translation failed: #{e.message}"
             break
           end
-          
+
           # Don't proceed if translation failed
           if !translated_content || translated_content.strip.empty?
             puts "❌ Translation failed - no content generated"
@@ -220,17 +223,17 @@ module Honyaku
 
           # Create directory and write file only if we have valid content
           FileUtils.mkdir_p(File.dirname(target_file))
-          
+
           # Backup if requested
           if options[:backup] && File.exist?(target_file)
             backup_path = "#{target_file}.bak"
             FileUtils.cp(target_file, backup_path)
           end
-          
+
           # Write the translated content
           File.write(target_file, translated_content)
           puts "✨ Created #{target_file}"
-          
+
           # Automatically fix any YAML issues
           puts "🔧 Checking for YAML issues..."
           begin
@@ -239,7 +242,7 @@ module Honyaku
               if options[:backup] && !File.exist?("#{target_file}.bak")
                 FileUtils.cp(target_file, "#{target_file}.bak")
               end
-              
+
               File.write(target_file, fixed_content)
               puts "✨ Fixed YAML formatting issues"
             end
@@ -266,7 +269,7 @@ module Honyaku
 
     def fix_file(file_path, fixer)
       puts "🔧 Fixing #{file_path}..."
-      
+
       begin
         # Backup if requested
         if options[:backup]
@@ -285,27 +288,27 @@ module Honyaku
 
     def get_last_modified_time(file_path)
       times = []
-      
+
       # Get git timestamp if available
       if git_time = get_git_modified_time(file_path)
         times << git_time
       end
-      
+
       # Get filesystem timestamp
       if File.exist?(file_path)
         times << File.mtime(file_path)
       end
-      
+
       # Return the newest timestamp (or nil if no timestamps found)
       times.max
     end
 
     def get_git_modified_time(file_path)
       return nil unless system("git rev-parse --is-inside-work-tree > /dev/null 2>&1")
-      
+
       time_str = `git log -1 --format=%cd --date=iso -- #{file_path} 2>/dev/null`.strip
       return nil if time_str.empty?
-      
+
       Time.parse(time_str)
     rescue
       nil
@@ -321,4 +324,4 @@ module Honyaku
       true
     end
   end
-end 
+end
